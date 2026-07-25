@@ -6,7 +6,7 @@ The main workflows in this repo validate pull request commit messages and Go pul
 
 ## What to use
 
-- `scripts/validate-commit-message.sh` for validating commit subjects.
+- `scripts/validate-commit-message.sh` for validating commit subjects, including Git-generated merge commits.
 - `.github/workflows/validate-pull-request-commit-messages.yml` as a reusable workflow for commit validation.
 - `.github/workflows/validate-pull-request-go.yml` as a reusable workflow for Go pull request validation.
 

@@ -66,7 +66,7 @@ require_argument() {
 
 max_subject_length=72
 commit_regex="^(feat|fix|chore): [^[:space:]].*"
-merge_commit_regex="^Merge branch '([^']+)' into ([^[:space:]].*)$"
+merge_commit_regex="^Merge .+"
 expected_format="feat: commit message, fix: commit message, or chore: commit message"
 messages=()
 message_file=""
