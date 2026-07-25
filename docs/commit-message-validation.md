@@ -30,28 +30,19 @@ scripts/validate-commit-message.sh --range "origin/main..HEAD"
 
 ## Import in another project
 
-Copy `.github/workflows/validate-pull-request-commit-messages.yml` into your project:
+Call `.github/workflows/validate-pull-request-commit-messages.yml` as a reusable workflow from your project:
 
 ```yaml
-name: Validate pull request commit messages
+name: Validate CI
 
 on:
   pull_request:
 
 jobs:
   commit-message:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Validate commit messages
-        shell: bash
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/erivelto21/ci-templates/main/scripts/validate-commit-message.sh -o validate-commit-message.sh
-          chmod +x validate-commit-message.sh
-          ./validate-commit-message.sh --range "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+    uses: erivelto21/ci-templates/.github/workflows/validate-pull-request-commit-messages.yml@main
+    with:
+      commit_range: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
 ```
 
 ## Direct script usage in GitHub Actions

@@ -2,6 +2,12 @@ name: Validate pull request commit messages
 
 on:
   pull_request:
+  workflow_call:
+    inputs:
+      commit_range:
+        description: Git revision range to validate, such as base..head.
+        required: false
+        type: string
 
 jobs:
   validate-commit-message:
@@ -31,7 +37,15 @@ jobs:
         run: |
           set -euo pipefail
 
-          range="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          if [ -n "${{ inputs.commit_range }}" ]; then
+            range="${{ inputs.commit_range }}"
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            range="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          else
+            echo "commit-range input is required when this workflow is called directly."
+            exit 1
+          fi
+
           echo "range=$range" >>"$GITHUB_OUTPUT"
 
       - name: Validate commit messages
