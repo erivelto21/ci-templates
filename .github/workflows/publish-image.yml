@@ -38,7 +38,7 @@ permissions:
 jobs:
   publish:
     name: Build and publish image
-    environment: prod
+    environment: production
     runs-on: ubuntu-latest
 
     steps:
