@@ -1,0 +1,40 @@
+name: Validate pull request commit messages
+
+on:
+  pull_request:
+
+jobs:
+  validate-commit-message:
+    name: Validate pull request commit messages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare validator
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          script_path="$RUNNER_TEMP/validate-commit-message.sh"
+          ref="main"
+
+          curl -fsSL "https://raw.githubusercontent.com/erivelto21/ci-templates/${ref}/scripts/validate-commit-message.sh" -o "$script_path"
+          chmod +x "$script_path"
+
+      - name: Resolve commit range
+        id: commit-range
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          range="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          echo "range=$range" >>"$GITHUB_OUTPUT"
+
+      - name: Validate commit messages
+        shell: bash
+        run: |
+          "$RUNNER_TEMP/validate-commit-message.sh" --range "${{ steps.commit-range.outputs.range }}"
