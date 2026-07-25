@@ -10,9 +10,11 @@ By default, the accepted formats are:
 feat: commit message
 fix: commit message
 chore: commit message
+Merge branch 'main' into test-2
 ```
 
 The script validates the commit subject only, which is the first line of a commit message. The subject must not be empty and must have at most 72 characters.
+Merge commits in the form `Merge branch 'main' into test-2` are also allowed.
 
 ## Inputs
 

@@ -9,6 +9,7 @@ Expected default format:
   feat: commit message
   fix: commit message
   chore: commit message
+  Merge branch 'main' into test-2
 
 Commit subjects must not be empty and must have at most 72 characters.
 
@@ -65,6 +66,7 @@ require_argument() {
 
 max_subject_length=72
 commit_regex="^(feat|fix|chore): [^[:space:]].*"
+merge_commit_regex="^Merge branch '([^']+)' into ([^[:space:]].*)$"
 expected_format="feat: commit message, fix: commit message, or chore: commit message"
 messages=()
 message_file=""
@@ -158,7 +160,9 @@ for subject in "${messages[@]}"; do
     failure_reason="Commit message must not be empty."
   elif ((${#subject} > max_subject_length)); then
     failure_reason="Commit message must have at most ${max_subject_length} characters."
-  elif [[ ! "$subject" =~ $commit_regex ]]; then
+  elif [[ "$subject" =~ $commit_regex || "$subject" =~ $merge_commit_regex ]]; then
+    failure_reason=""
+  else
     failure_reason="Commit message must start with feat:, fix:, or chore: followed by a non-empty message."
   fi
 
