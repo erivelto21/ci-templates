@@ -1,0 +1,95 @@
+name: Publish image
+
+on:
+  workflow_call:
+    inputs:
+      registry:
+        description: Registry host, such as ghcr.io or registry.example.com.
+        required: true
+        type: string
+      namespace:
+        description: Optional registry namespace or organization.
+        required: false
+        type: string
+        default: ""
+      image_name:
+        description: Image name without a tag.
+        required: true
+        type: string
+      dockerfile_path:
+        description: Path to the Dockerfile.
+        required: false
+        type: string
+        default: docker/Dockerfile.api
+      build_context:
+        description: Docker build context.
+        required: false
+        type: string
+        default: .
+    secrets:
+      registry_username:
+        required: true
+      registry_password:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build and publish image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ secrets.registry_username }}
+          password: ${{ secrets.registry_password }}
+
+      - name: Resolve image reference
+        id: image-ref
+        shell: bash
+        env:
+          REGISTRY: ${{ inputs.registry }}
+          NAMESPACE: ${{ inputs.namespace }}
+          IMAGE_NAME: ${{ inputs.image_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          registry="${REGISTRY%/}"
+          namespace="${NAMESPACE%/}"
+          namespace="${namespace#/}"
+          image_name="${IMAGE_NAME#/}"
+          image_name="${image_name%/}"
+
+          if [ -z "$registry" ]; then
+            echo "registry input is required."
+            exit 1
+          fi
+
+          if [ -z "$image_name" ]; then
+            echo "image_name input is required."
+            exit 1
+          fi
+
+          if [ -n "$namespace" ]; then
+            image_ref="$registry/$namespace/$image_name:$SHA"
+          else
+            image_ref="$registry/$image_name:$SHA"
+          fi
+
+          echo "ref=$image_ref" >>"$GITHUB_OUTPUT"
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.build_context }}
+          file: ${{ inputs.dockerfile_path }}
+          push: true
+          tags: ${{ steps.image-ref.outputs.ref }}
