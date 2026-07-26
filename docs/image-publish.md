@@ -15,8 +15,13 @@ This template provides a reusable workflow for publishing an image after a merge
 | `registry` | Yes | - | Registry host, such as `ghcr.io` or `registry.example.com`. |
 | `namespace` | No | `""` | Optional registry namespace or organization. |
 | `image_name` | Yes | - | Image name without a tag. |
-| `dockerfile_path` | No | `docker/Dockerfile.api` | Path to the Dockerfile. |
 | `build_context` | No | `.` | Docker build context. |
+
+## Variables
+
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `DOCKERFILE_PATH` | No | `docker/Dockerfile.api` | Path to the Dockerfile inside this CI templates repository. |
 
 ## Secrets
 
@@ -42,7 +47,6 @@ jobs:
       registry: ${{ vars.REGISTRY }}
       namespace: ${{ vars.REGISTRY_NAMESPACE }}
       image_name: read-tracker
-      dockerfile_path: docker/Dockerfile.api
       build_context: .
     secrets:
       registry_username: ${{ secrets.REGISTRY_USERNAME }}

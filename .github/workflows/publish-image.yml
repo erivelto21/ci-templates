@@ -3,16 +3,14 @@ name: Publish image
 on:
   workflow_call:
     inputs:
-      dockerfile_path:
-        description: Path to the Dockerfile.
-        required: false
-        type: string
-        default: docker/Dockerfile.api
       build_context:
         description: Docker build context.
         required: false
         type: string
         default: .
+
+env:
+  DOCKERFILE_PATH: ${{ vars.DOCKERFILE_PATH || 'docker/Dockerfile.api' }}
 
 permissions:
   contents: read
@@ -80,6 +78,6 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ${{ inputs.build_context }}
-          file: .ci-templates/${{ inputs.dockerfile_path }}
+          file: .ci-templates/${{ env.DOCKERFILE_PATH }}
           push: true
           tags: ${{ steps.image-ref.outputs.ref }}
