@@ -3,19 +3,6 @@ name: Publish image
 on:
   workflow_call:
     inputs:
-      registry:
-        description: Registry host, such as ghcr.io or registry.example.com.
-        required: true
-        type: string
-      namespace:
-        description: Optional registry namespace or organization.
-        required: false
-        type: string
-        default: ""
-      image_name:
-        description: Image name without a tag.
-        required: true
-        type: string
       dockerfile_path:
         description: Path to the Dockerfile.
         required: false
@@ -26,11 +13,6 @@ on:
         required: false
         type: string
         default: .
-    secrets:
-      registry_username:
-        required: true
-      registry_password:
-        required: true
 
 permissions:
   contents: read
@@ -48,17 +30,17 @@ jobs:
       - name: Log in to registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ inputs.registry }}
-          username: ${{ secrets.registry_username }}
-          password: ${{ secrets.registry_password }}
+          registry: ${{ vars.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Resolve image reference
         id: image-ref
         shell: bash
         env:
-          REGISTRY: ${{ inputs.registry }}
-          NAMESPACE: ${{ inputs.namespace }}
-          IMAGE_NAME: ${{ inputs.image_name }}
+          REGISTRY: ${{ vars.REGISTRY }}
+          NAMESPACE: ${{ vars.REGISTRY_NAMESPACE }}
+          IMAGE_NAME: ${{ vars.IMAGE_NAME }}
           SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
