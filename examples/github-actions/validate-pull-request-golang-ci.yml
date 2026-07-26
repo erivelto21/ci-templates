@@ -1,4 +1,4 @@
-name: Validate CI
+name: Validate Go CI
 
 on:
   pull_request:
