@@ -21,7 +21,7 @@ This template provides a reusable workflow for publishing an image after a merge
 
 | Variable | Required | Default | Description |
 | --- | --- | --- | --- |
-| `DOCKERFILE_PATH` | No | `docker/Dockerfile.api` | Path to the Dockerfile inside this CI templates repository. |
+| `DOCKERFILE_PATH` | Yes | - | Path to the Dockerfile inside this CI templates repository. |
 
 ## Secrets
 

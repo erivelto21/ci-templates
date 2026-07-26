@@ -10,7 +10,7 @@ on:
         default: .
 
 env:
-  DOCKERFILE_PATH: ${{ vars.DOCKERFILE_PATH || 'docker/Dockerfile.api' }}
+  DOCKERFILE_PATH: ${{ vars.DOCKERFILE_PATH }}
 
 permissions:
   contents: read
@@ -63,6 +63,11 @@ jobs:
 
           if [ -z "$image_name" ]; then
             echo "image_name input is required."
+            exit 1
+          fi
+
+          if [ -z "$DOCKERFILE_PATH" ]; then
+            echo "DOCKERFILE_PATH variable is required."
             exit 1
           fi
 
