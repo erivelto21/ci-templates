@@ -25,6 +25,11 @@ on:
         required: false
         type: string
         default: 5m
+      values_file:
+        description: Optional path to a values file (for example a SOPS-encrypted secrets file) inside the infrastructure repository.
+        required: false
+        type: string
+        default: ""
     secrets:
       kubeconfig:
         description: Base64-encoded kubeconfig for the target cluster.
@@ -38,6 +43,9 @@ on:
       registry_password:
         description: Registry password or access token.
         required: true
+      sops_age_key:
+        description: Age private key used to decrypt SOPS-encrypted values files. Required when values_file is set.
+        required: false
 
 permissions:
   contents: read
@@ -122,6 +130,10 @@ jobs:
             --namespace "$NAMESPACE" \
             --dry-run=client -o yaml | kubectl apply -f -
 
+      - name: Install helm-secrets plugin
+        if: inputs.values_file != ''
+        run: helm plugin install https://github.com/jkroepke/helm-secrets
+
       - name: Deploy with Helm
         env:
           RELEASE_NAME: ${{ inputs.release_name }}
@@ -130,6 +142,8 @@ jobs:
           REPOSITORY: ${{ steps.image-ref.outputs.repository }}
           TAG: ${{ steps.image-ref.outputs.tag }}
           TIMEOUT: ${{ inputs.timeout }}
+          VALUES_FILE: ${{ inputs.values_file }}
+          SOPS_AGE_KEY: ${{ secrets.sops_age_key }}
         run: |
           set -euo pipefail
 
@@ -146,13 +160,28 @@ jobs:
             exit 1
           fi
 
-          helm upgrade --install "$RELEASE_NAME" "./infra/$CHART_PATH" \
-            --namespace "$NAMESPACE" \
-            --create-namespace \
-            --set "image.repository=$REPOSITORY" \
-            --set "image.tag=$TAG" \
-            --wait \
-            --timeout "$TIMEOUT"
+          if [ -n "$VALUES_FILE" ]; then
+            if [ -z "$SOPS_AGE_KEY" ]; then
+              echo "error: sops_age_key secret is required when values_file is set."
+              exit 1
+            fi
+            helm secrets upgrade --install "$RELEASE_NAME" "./infra/$CHART_PATH" \
+              --namespace "$NAMESPACE" \
+              --create-namespace \
+              --set "image.repository=$REPOSITORY" \
+              --set "image.tag=$TAG" \
+              -f "./infra/$VALUES_FILE" \
+              --wait \
+              --timeout "$TIMEOUT"
+          else
+            helm upgrade --install "$RELEASE_NAME" "./infra/$CHART_PATH" \
+              --namespace "$NAMESPACE" \
+              --create-namespace \
+              --set "image.repository=$REPOSITORY" \
+              --set "image.tag=$TAG" \
+              --wait \
+              --timeout "$TIMEOUT"
+          fi
 
       - name: Verify rollout
         env:

@@ -30,6 +30,7 @@ and `image.tag` in its `values.yaml`, and SHOULD reference the `imagePullSecret`
 | `namespace` | Yes | - | Kubernetes namespace to deploy into. |
 | `environment` | No | `production` | GitHub environment for approval gates and secret scoping. |
 | `timeout` | No | `5m` | Helm upgrade and rollout timeout. |
+| `values_file` | No | `""` | Optional path to a values file (e.g. a SOPS-encrypted secrets file) inside the infrastructure repository. When set, the workflow installs the `helm-secrets` plugin and runs `helm secrets upgrade` with `-f`. |
 
 ## Variables
 
@@ -49,6 +50,7 @@ and `image.tag` in its `values.yaml`, and SHOULD reference the `imagePullSecret`
 | `infra_token` | Yes | Token with read access to the infrastructure repository. |
 | `registry_username` | Yes | Registry username or token owner. |
 | `registry_password` | Yes | Registry password or access token. |
+| `sops_age_key` | No* | Age private key used to decrypt SOPS-encrypted values files. *Required when `values_file` is set. |
 
 ## Example usage
 
@@ -74,6 +76,7 @@ jobs:
       chart_path: charts/api
       release_name: api
       namespace: production
+      values_file: charts/api/values.secret.yaml
     secrets: inherit
 ```
 
