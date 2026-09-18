@@ -1,0 +1,164 @@
+name: Deploy to Kubernetes
+
+on:
+  workflow_call:
+    inputs:
+      chart_path:
+        description: Path to the Helm chart inside the infrastructure repository.
+        required: true
+        type: string
+      release_name:
+        description: Helm release name.
+        required: true
+        type: string
+      namespace:
+        description: Kubernetes namespace to deploy into.
+        required: true
+        type: string
+      environment:
+        description: GitHub environment used for approval gates and secret scoping.
+        required: false
+        type: string
+        default: production
+      timeout:
+        description: Helm upgrade and rollout timeout.
+        required: false
+        type: string
+        default: 5m
+    secrets:
+      kubeconfig:
+        description: Base64-encoded kubeconfig for the target cluster.
+        required: true
+      infra_token:
+        description: Token with read access to the infrastructure repository.
+        required: true
+      registry_username:
+        description: Registry username or token owner.
+        required: true
+      registry_password:
+        description: Registry password or access token.
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to Kubernetes
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout CI templates
+        uses: actions/checkout@v4
+        with:
+          repository: erivelto21/ci-templates
+          ref: main
+          path: .ci-templates
+
+      - name: Checkout infrastructure repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.INFRA_REPO }}
+          token: ${{ secrets.INFRA_TOKEN }}
+          path: infra
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Configure kubeconfig
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$KUBECONFIG_B64" ]; then
+            echo "error: kubeconfig secret is required."
+            exit 1
+          fi
+
+          mkdir -p "$HOME/.kube"
+          echo "$KUBECONFIG_B64" | base64 -d >"$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Resolve image reference
+        id: image-ref
+        shell: bash
+        env:
+          REGISTRY: ${{ vars.REGISTRY }}
+          REGISTRY_NAMESPACE: ${{ vars.REGISTRY_NAMESPACE }}
+          IMAGE_NAME: ${{ vars.IMAGE_NAME }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          .ci-templates/scripts/resolve-image-ref.sh
+
+      - name: Create or update image pull secret
+        env:
+          REGISTRY: ${{ vars.REGISTRY }}
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          IMAGE_PULL_SECRET_NAME: ${{ vars.IMAGE_PULL_SECRET_NAME }}
+          NAMESPACE: ${{ inputs.namespace }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$REGISTRY" ]; then
+            echo "error: REGISTRY variable is required."
+            exit 1
+          fi
+          if [ -z "$IMAGE_PULL_SECRET_NAME" ]; then
+            echo "error: IMAGE_PULL_SECRET_NAME variable is required."
+            exit 1
+          fi
+
+          kubectl create secret docker-registry "$IMAGE_PULL_SECRET_NAME" \
+            --docker-server="$REGISTRY" \
+            --docker-username="$REGISTRY_USERNAME" \
+            --docker-password="$REGISTRY_PASSWORD" \
+            --namespace "$NAMESPACE" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy with Helm
+        env:
+          RELEASE_NAME: ${{ inputs.release_name }}
+          NAMESPACE: ${{ inputs.namespace }}
+          CHART_PATH: ${{ inputs.chart_path }}
+          REPOSITORY: ${{ steps.image-ref.outputs.repository }}
+          TAG: ${{ steps.image-ref.outputs.tag }}
+          TIMEOUT: ${{ inputs.timeout }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$RELEASE_NAME" ]; then
+            echo "error: release_name input is required."
+            exit 1
+          fi
+          if [ -z "$NAMESPACE" ]; then
+            echo "error: namespace input is required."
+            exit 1
+          fi
+          if [ -z "$CHART_PATH" ]; then
+            echo "error: chart_path input is required."
+            exit 1
+          fi
+
+          helm upgrade --install "$RELEASE_NAME" "./infra/$CHART_PATH" \
+            --namespace "$NAMESPACE" \
+            --create-namespace \
+            --set "image.repository=$REPOSITORY" \
+            --set "image.tag=$TAG" \
+            --wait \
+            --timeout "$TIMEOUT"
+
+      - name: Verify rollout
+        env:
+          RELEASE_NAME: ${{ inputs.release_name }}
+          NAMESPACE: ${{ inputs.namespace }}
+          TIMEOUT: ${{ inputs.timeout }}
+        run: |
+          set -euo pipefail
+          kubectl rollout status "deployment/$RELEASE_NAME" -n "$NAMESPACE" --timeout="$TIMEOUT"

@@ -1,0 +1,22 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish:
+    uses: erivelto21/ci-templates/.github/workflows/publish-image.yml@main
+    with:
+      build_context: .
+    secrets: inherit
+
+  deploy:
+    needs: publish
+    uses: erivelto21/ci-templates/.github/workflows/deploy-kubernetes.yml@main
+    with:
+      chart_path: charts/api
+      release_name: api
+      namespace: production
+    secrets: inherit
