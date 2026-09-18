@@ -44,40 +44,19 @@ jobs:
         shell: bash
         env:
           REGISTRY: ${{ vars.REGISTRY }}
-          NAMESPACE: ${{ vars.REGISTRY_NAMESPACE }}
+          REGISTRY_NAMESPACE: ${{ vars.REGISTRY_NAMESPACE }}
           IMAGE_NAME: ${{ vars.IMAGE_NAME }}
           SHA: ${{ github.sha }}
+          DOCKERFILE_PATH: ${{ env.DOCKERFILE_PATH }}
         run: |
           set -euo pipefail
-
-          registry="${REGISTRY%/}"
-          namespace="${NAMESPACE%/}"
-          namespace="${namespace#/}"
-          image_name="${IMAGE_NAME#/}"
-          image_name="${image_name%/}"
-
-          if [ -z "$registry" ]; then
-            echo "registry input is required."
-            exit 1
-          fi
-
-          if [ -z "$image_name" ]; then
-            echo "image_name input is required."
-            exit 1
-          fi
 
           if [ -z "$DOCKERFILE_PATH" ]; then
             echo "DOCKERFILE_PATH variable is required."
             exit 1
           fi
 
-          if [ -n "$namespace" ]; then
-            image_ref="$registry/$namespace/$image_name:$SHA"
-          else
-            image_ref="$registry/$image_name:$SHA"
-          fi
-
-          echo "ref=$image_ref" >>"$GITHUB_OUTPUT"
+          .ci-templates/scripts/resolve-image-ref.sh
 
       - name: Build and push image
         uses: docker/build-push-action@v6

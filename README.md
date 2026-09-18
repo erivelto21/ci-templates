@@ -11,9 +11,12 @@ The main workflows in this repo validate pull request commit messages, Go pull r
 - `.github/workflows/validate-pull-request-go.yml` as a reusable workflow for Go pull request validation.
 - `.github/workflows/validate-pull-request-react.yml` as a reusable workflow for React pull request validation.
 - `.github/workflows/publish-image.yml` as a reusable workflow for publishing images.
+- `.github/workflows/deploy-kubernetes.yml` as a reusable workflow for deploying a published image to a Kubernetes cluster via Helm.
+- `scripts/resolve-image-ref.sh` as a shared helper that resolves the image reference for both publish and deploy workflows.
 - `examples/github-actions/validate-pull-request-golang-ci.yml` as a consumer example that runs commit validation before Go validation.
 - `examples/github-actions/validate-pull-request-react.yml` as a consumer example for React applications.
 - `examples/github-actions/publish-image.yml` as a consumer example that publishes on merges to `main`.
+- `examples/github-actions/deploy-kubernetes.yml` as a consumer example that publishes and then deploys to Kubernetes.
 
 ## Example
 
@@ -70,3 +73,7 @@ commit validation
 ## Image publishing
 
 Use `.github/workflows/publish-image.yml` from a consumer repository to build and push the image with the commit SHA as the immutable tag.
+
+## Kubernetes deploy
+
+Use `.github/workflows/deploy-kubernetes.yml` from a consumer repository to deploy a published image to a Kubernetes cluster via Helm. See `docs/kubernetes-deploy.md` for inputs, variables, secrets, and a usage example.
