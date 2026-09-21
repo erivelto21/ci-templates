@@ -137,8 +137,22 @@ jobs:
 
           if [ -n "${VALUES_FILE_B64:-}" ]; then
             values_file="$RUNNER_TEMP/values.secret.yaml"
-            echo "$VALUES_FILE_B64" | base64 -d >"$values_file"
+            echo "$VALUES_FILE_B64" | base64 -d >"$values_file" || {
+              echo "error: values_file_b64 is not valid base64."
+              exit 1
+            }
             chmod 600 "$values_file"
+
+            # SOPS-encrypted files start with an #ENC[...] header. Detect a
+            # corrupt/malformed secret early instead of failing later in sops.
+            if ! grep -q '^#ENC\[' "$values_file"; then
+              size=$(wc -c <"$values_file")
+              echo "error: decoded values file does not start with '#ENC[' (got ${size} bytes)."
+              echo "       values_file_b64 must be the output of: base64 -w0 values.secret.yaml"
+              echo "       stored as a single line, without wrapping, spacing or \\n literals."
+              exit 1
+            fi
+
             echo "file=$values_file" >>"$GITHUB_OUTPUT"
           fi
 
