@@ -144,7 +144,7 @@ jobs:
 
       - name: Install helm-secrets plugin
         if: steps.values-file.outputs.file != ''
-        run: helm plugin install https://github.com/jkroepke/helm-secrets
+        run: helm plugin install --verify=false https://github.com/jkroepke/helm-secrets
 
       - name: Deploy with Helm
         env:
