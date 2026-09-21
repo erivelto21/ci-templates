@@ -42,7 +42,7 @@ on:
         description: Age private key used to decrypt SOPS-encrypted values files.
         required: false
       values_file_b64:
-        description: Base64-encoded SOPS-encrypted Helm values file (same content as values.secret.yaml). Decoded and passed to helm secrets upgrade with -f.
+        description: Base64-encoded SOPS-encrypted Helm values file (same content as values.secret.yaml). Decoded, decrypted with sops and passed to helm upgrade with -f.
         required: false
 
 permissions:
@@ -142,9 +142,33 @@ jobs:
             echo "file=$values_file" >>"$GITHUB_OUTPUT"
           fi
 
-      - name: Install helm-secrets plugin
+      - name: Install SOPS
         if: steps.values-file.outputs.file != ''
-        run: helm plugin install --verify=false https://github.com/jkroepke/helm-secrets
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/sops" \
+            https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64
+          chmod +x "$RUNNER_TEMP/sops"
+          sudo mv "$RUNNER_TEMP/sops" /usr/local/bin/sops
+
+      - name: Decrypt values file with SOPS
+        id: decrypt-values
+        if: steps.values-file.outputs.file != ''
+        env:
+          ENCRYPTED_VALUES_FILE: ${{ steps.values-file.outputs.file }}
+          SOPS_AGE_KEY: ${{ secrets.sops_age_key }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$SOPS_AGE_KEY" ]; then
+            echo "error: sops_age_key secret is required when values_file_b64 is set."
+            exit 1
+          fi
+
+          decrypted="$RUNNER_TEMP/values.yaml"
+          sops --decrypt "$ENCRYPTED_VALUES_FILE" >"$decrypted"
+          chmod 600 "$decrypted"
+          echo "file=$decrypted" >>"$GITHUB_OUTPUT"
 
       - name: Deploy with Helm
         env:
@@ -154,8 +178,7 @@ jobs:
           REPOSITORY: ${{ steps.image-ref.outputs.repository }}
           TAG: ${{ steps.image-ref.outputs.tag }}
           TIMEOUT: ${{ inputs.timeout }}
-          VALUES_FILE: ${{ steps.values-file.outputs.file }}
-          SOPS_AGE_KEY: ${{ secrets.sops_age_key }}
+          VALUES_FILE: ${{ steps.decrypt-values.outputs.file }}
         run: |
           set -euo pipefail
 
@@ -173,11 +196,7 @@ jobs:
           fi
 
           if [ -n "$VALUES_FILE" ]; then
-            if [ -z "$SOPS_AGE_KEY" ]; then
-              echo "error: sops_age_key secret is required when values_file_b64 is set."
-              exit 1
-            fi
-            helm secrets upgrade --install "$RELEASE_NAME" "./infra/$CHART_PATH" \
+            helm upgrade --install "$RELEASE_NAME" "./infra/$CHART_PATH" \
               --namespace "$NAMESPACE" \
               --create-namespace \
               --set "image.repository=$REPOSITORY" \

@@ -10,7 +10,7 @@ This template provides a reusable workflow for deploying a published image to a 
 - Resolves the published image reference (same shared script as the publish workflow).
 - Creates or updates the `imagePullSecret` for the private registry, idempotently.
 - Runs `helm upgrade --install`, injecting `image.repository` and `image.tag`.
-- Optionally decrypts a SOPS-encrypted values file (base64 secret) and runs `helm secrets upgrade` with `-f`.
+- Optionally decrypts a SOPS-encrypted values file (base64 secret) with the `sops` binary and runs `helm upgrade --install` with `-f`.
 - Verifies the deployment rollout and fails early if it does not become ready.
 
 ## Prerequisites
@@ -51,7 +51,7 @@ and `image.tag` in its `values.yaml`, and SHOULD reference the `imagePullSecret`
 | `registry_username` | Yes | Registry username or token owner. |
 | `registry_password` | Yes | Registry password or access token. |
 | `sops_age_key` | No* | Age private key used to decrypt SOPS-encrypted values files. *Required when `values_file_b64` is set. |
-| `values_file_b64` | No | Base64-encoded SOPS-encrypted Helm values file (e.g. the content of `values.secret.yaml`). Decoded and passed to `helm secrets upgrade` with `-f`. |
+| `values_file_b64` | No | Base64-encoded SOPS-encrypted Helm values file (e.g. the content of `values.secret.yaml`). Decoded, decrypted with `sops` and passed to `helm upgrade` with `-f`. |
 
 ### Using a SOPS-encrypted values file
 
