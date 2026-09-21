@@ -19,5 +19,4 @@ jobs:
       chart_path: charts/api
       release_name: api
       namespace: production
-      values_file: charts/api/values.secret.yaml
     secrets: inherit

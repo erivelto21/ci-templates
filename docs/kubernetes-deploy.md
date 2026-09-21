@@ -10,6 +10,7 @@ This template provides a reusable workflow for deploying a published image to a 
 - Resolves the published image reference (same shared script as the publish workflow).
 - Creates or updates the `imagePullSecret` for the private registry, idempotently.
 - Runs `helm upgrade --install`, injecting `image.repository` and `image.tag`.
+- Optionally decrypts a SOPS-encrypted values file (base64 secret) and runs `helm secrets upgrade` with `-f`.
 - Verifies the deployment rollout and fails early if it does not become ready.
 
 ## Prerequisites
@@ -30,7 +31,6 @@ and `image.tag` in its `values.yaml`, and SHOULD reference the `imagePullSecret`
 | `namespace` | Yes | - | Kubernetes namespace to deploy into. |
 | `environment` | No | `production` | GitHub environment for approval gates and secret scoping. |
 | `timeout` | No | `5m` | Helm upgrade and rollout timeout. |
-| `values_file` | No | `""` | Optional path to a values file (e.g. a SOPS-encrypted secrets file) inside the infrastructure repository. When set, the workflow installs the `helm-secrets` plugin and runs `helm secrets upgrade` with `-f`. |
 
 ## Variables
 
@@ -50,7 +50,26 @@ and `image.tag` in its `values.yaml`, and SHOULD reference the `imagePullSecret`
 | `infra_token` | Yes | Token with read access to the infrastructure repository. |
 | `registry_username` | Yes | Registry username or token owner. |
 | `registry_password` | Yes | Registry password or access token. |
-| `sops_age_key` | No* | Age private key used to decrypt SOPS-encrypted values files. *Required when `values_file` is set. |
+| `sops_age_key` | No* | Age private key used to decrypt SOPS-encrypted values files. *Required when `values_file_b64` is set. |
+| `values_file_b64` | No | Base64-encoded SOPS-encrypted Helm values file (e.g. the content of `values.secret.yaml`). Decoded and passed to `helm secrets upgrade` with `-f`. |
+
+### Using a SOPS-encrypted values file
+
+To deploy with application secrets (for example `values.secret.yaml` encrypted with
+SOPS and age):
+
+1. Encode the encrypted file content as base64 (same approach as `KUBECONFIG`):
+
+   ```bash
+   base64 -w0 deploy/helm/tracker/values.secret.yaml
+   ```
+
+2. Store the output in the `values_file_b64` environment secret, and the age
+   private key in the `sops_age_key` environment secret (both in the `production`
+   environment so the runner can access them).
+
+3. Keep in mind the secret is a snapshot: if the encrypted values file changes in
+   the repository, regenerate and update the `values_file_b64` secret.
 
 ## Example usage
 
@@ -76,7 +95,6 @@ jobs:
       chart_path: charts/api
       release_name: api
       namespace: production
-      values_file: charts/api/values.secret.yaml
     secrets: inherit
 ```
 
