@@ -147,11 +147,11 @@ jobs:
             }
             chmod 600 "$values_file"
 
-            # SOPS-encrypted files start with an #ENC[...] header. Detect a
+            # SOPS-encrypted files carry a `sops:` metadata block. Detect a
             # corrupt/malformed secret early instead of failing later in sops.
-            if ! grep -q '^#ENC\[' "$values_file"; then
+            if ! grep -q '^sops:' "$values_file"; then
               size=$(wc -c <"$values_file")
-              echo "error: decoded values file does not start with '#ENC[' (got ${size} bytes)."
+              echo "error: decoded values file has no 'sops:' metadata (got ${size} bytes)."
               echo "       values_file_b64 must be the output of: base64 -w0 values.secret.yaml"
               echo "       stored as a single line, without wrapping, spacing or \\n literals."
               exit 1
