@@ -121,6 +121,10 @@ jobs:
             exit 1
           fi
 
+          # Namespace may not exist yet (helm --create-namespace runs later).
+          # Create it idempotently so the imagePullSecret can be applied.
+          kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+
           kubectl create secret docker-registry "$IMAGE_PULL_SECRET_NAME" \
             --docker-server="$REGISTRY" \
             --docker-username="$REGISTRY_USERNAME" \
