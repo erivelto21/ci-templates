@@ -58,7 +58,10 @@ jobs:
 
       - name: Install golangci-lint
         shell: bash
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+        # v2, not v1: the v1 binary cannot type-check modules built with a newer
+        # toolchain than itself and reports false "undefined" errors. The path is
+        # /v2/ because golangci-lint v2 is a separate module.
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 
       - name: Run golangci-lint
         shell: bash
